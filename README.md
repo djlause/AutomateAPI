@@ -15,6 +15,8 @@ Note: A Partner "ClientID" token is needed with Automate 20 Patch 11 and above. 
 
 4) New - Invoke-AutomateCommand, used like this Get-AutomateComputer -ComputerId 1 | Invoke-AutomateCommand -PowerShell -Command "Get-Service"
 
+5) Export-AutomateScript, exports every Automate script (steps, parameters, variables, folders) from the Automate database or from XML exports to readable Markdown, JSON and code files, for example to rebuild them in another RMM. See [Docs/Export-AutomateScript.md](Docs/Export-AutomateScript.md)
+
 A PowerShell Module created by Gavin Stone (Gavsto) for the ConnectWise Automate API
 
 # How do I get Going
