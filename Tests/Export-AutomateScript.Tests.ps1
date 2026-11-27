@@ -1,6 +1,15 @@
 # Pester 5 tests for Export-AutomateScript. They use the XML fixtures in Tests\Fixtures and need no
 # Automate server or database.
-#   Invoke-Pester -Path .\Tests\Export-AutomateScript.Tests.ps1
+#   Needs Pester 5 (Install-Module Pester -Force -SkipPublisherCheck -Scope CurrentUser), then:
+#   Import-Module Pester -MinimumVersion 5.0; Invoke-Pester -Path .\Tests\Export-AutomateScript.Tests.ps1
+
+# Windows PowerShell ships with Pester 3.4, which cannot run these tests. Stop with a clear message.
+$LoadedPester = Get-Module Pester
+if ($LoadedPester -and $LoadedPester.Version.Major -lt 5) {
+    throw ("These tests need Pester 5 or later, but Pester $($LoadedPester.Version) is loaded. Run: " +
+        "Install-Module Pester -Force -SkipPublisherCheck -Scope CurrentUser; then open a new PowerShell window and run " +
+        "Import-Module Pester -MinimumVersion 5.0; Invoke-Pester -Path .\Tests\Export-AutomateScript.Tests.ps1")
+}
 
 BeforeAll {
     Get-Module AutomateAPI | Remove-Module -Force
