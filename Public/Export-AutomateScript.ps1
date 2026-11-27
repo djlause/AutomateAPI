@@ -29,7 +29,7 @@ function Export-AutomateScript {
       .PARAMETER Credential
         MySQL user name and password. A read-only account is recommended. You are prompted if it is not given.
       .PARAMETER MySqlDataPath
-        Full path to MySql.Data.dll (MySQL Connector/NET). If not given, the function looks in the Automate
+        Full path to MySql.Data.dll (MySQL Connector/NET), or a folder that contains it. If not given, the function looks in the Automate
         Control Center folder, the MySQL Connector/NET install folders and the GAC.
       .PARAMETER ConnectionOptions
         Extra connection string settings, for example 'SslMode=Required'.
@@ -314,7 +314,19 @@ function Get-AutomateScriptRowsFromDatabase {
 
     $Connection = New-Object MySql.Data.MySqlClient.MySqlConnection($Builder.ToString())
     try {
-        $Connection.Open()
+        try {
+            $Connection.Open()
+        }
+        catch {
+            $Message = $_.Exception.Message
+            if ($_.Exception.InnerException) { $Message = $_.Exception.InnerException.Message }
+            if ($Message -match 'Unable to connect to any of the specified MySQL hosts') {
+                $Message += (" This means nothing answered on ${Server}:$Port. Check that MySQL is listening there " +
+                    "(Test-NetConnection $Server -Port $Port), that a firewall is not blocking the port, and that MySQL's " +
+                    "bind-address allows remote connections. Running this on the Automate server itself with -Server localhost avoids most of this.")
+            }
+            throw "Could not connect to MySQL on ${Server}:$Port as $($Credential.UserName). $Message"
+        }
         Invoke-AutomateMySqlQuery -Connection $Connection -Query 'SET SESSION TRANSACTION READ ONLY' -NonQuery
         $Scripts = Invoke-AutomateMySqlQuery -Connection $Connection -Query 'SELECT * FROM lt_scripts ORDER BY ScriptId'
         $Folders = Invoke-AutomateMySqlQuery -Connection $Connection -Query 'SELECT * FROM scriptfolders ORDER BY FolderID'
@@ -356,7 +368,15 @@ function Import-AutomateMySqlData {
     if ('MySql.Data.MySqlClient.MySqlConnection' -as [type]) { return }
 
     $Candidates = @()
-    if ($Path) { $Candidates += $Path }
+    if ($Path) {
+        # A folder is accepted too: the newest MySql.Data.dll under it is used
+        if (Test-Path -LiteralPath $Path -PathType Container) {
+            $Candidates += @(Get-ChildItem -LiteralPath $Path -Filter 'MySql.Data.dll' -Recurse -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -ExpandProperty FullName)
+        }
+        else {
+            $Candidates += $Path
+        }
+    }
     # Assumption: the Automate Control Center and the Automate server ship MySql.Data.dll in these folders
     foreach ($ProgramFolder in @(${env:ProgramFiles(x86)}, $env:ProgramFiles)) {
         if (-not $ProgramFolder) { continue }
